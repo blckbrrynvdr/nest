@@ -1,44 +1,37 @@
 import {Injectable} from "@nestjs/common";
-import {Book, CreateBookRequestDto, UpdateBookRequestDto} from "../interfaces/book.interface";
+import {Book, CreateBookRequestDto, UpdateBookRequestDto} from "./interfaces/books.interface";
+import {InjectConnection, InjectModel} from "@nestjs/mongoose";
+import {Books, BooksDocument} from "./schemas/books.schema";
+import {Connection, Model} from "mongoose";
 
 @Injectable()
 export class BooksService {
-	private readonly books: Book[] = [
-		{
-			title: 'string',
-			description: 'string',
-			authors: 'string',
-			favorite: 'string',
-			fileCover: 'string',
-			fileName: 'string',
-			fileBook: 'string',
-			_id : '0',
-		}
-	];
-
-	createBook(book: CreateBookRequestDto): string {
-		this.books.push({...book, _id: this.books.length.toString()});
-		return (this.books.length - 1).toString();
+	constructor(
+		@InjectModel(Books.name) private BooksModel: Model<BooksDocument>,
+		@InjectConnection() private connection: Connection
+	) {
 	}
 
-	getBook(id: string): Book {
-		return this.books.find((book) => book._id === id);
+	async createBook(data: CreateBookRequestDto): Promise<BooksDocument> {
+		const book = new this.BooksModel(data);
+
+		return await book.save();
 	}
 
-	getBooks(): Book[] {
-		return this.books;
+	async getBooks(): Promise<BooksDocument[]> {
+		return await this.BooksModel.find().select('-__v');
 	}
 
-	updateBook(id: string, book: UpdateBookRequestDto) {
-		const bookIndex = this.books.findIndex((book) => book._id === id);
-		this.books[bookIndex] = {
-			...this.books[bookIndex],
-			...book
-		};
+	async getBook(id: string): Promise<BooksDocument> {
+		return await this.BooksModel.findById(id).select('-__v');
 	}
 
-	deleteBook(id: string) {
-		const bookIndex = this.books.findIndex((book) => book._id === id);
-		delete this.books[bookIndex];
+	async updateBook(id: string, book: UpdateBookRequestDto): Promise<BooksDocument> {
+		return await this.BooksModel.findByIdAndUpdate(id, book).select('-__v');
+	}
+
+	async deleteBook(id: string): Promise<string> {
+		await this.BooksModel.deleteOne({_id: id});
+		return id;
 	}
 }
